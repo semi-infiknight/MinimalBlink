@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 
 const ACTION_URL = "https://37a3d4e1f4a8bb.lhr.life/api/actions/form";
 
-// Common CORS headers
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*", 
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
@@ -15,10 +15,10 @@ const CORS_HEADERS = {
 export async function GET(req: NextRequest) {
   try {
     const payload = {
-      icon: `https://example.com/donation-icon.png`,
+      icon: `https://blue-magnetic-wallaby-228.mypinata.cloud/ipfs/QmWqVwNn2REZ5rUV848LtcNiSFsLZq17fvbn7C9wd6hFga`,
       label: "Donate",
-      title: "Support Alice's Research",
-      description: "Donate ETH to support Alice's cybersecurity research.",
+      title: "Minmal Eth Blink",
+      description: "Donate ETH",
       disabled: false,
       links: {
         actions: [
@@ -77,20 +77,17 @@ export async function POST(req: NextRequest) {
       throw new Error('Private key or RPC URL is missing in the environment variables');
     }
 
-    // Connect to Ethereum network
     const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
     const signer = new ethers.Wallet(PRIVATE_KEY, provider);
 
-    // Create and send the transaction
     const tx = {
       to: account,
       value: ethers.utils.parseEther(amount),
-      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(note)),  // Optional note added to the transaction
+      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(note)), 
     };
 
     const transactionResponse = await signer.sendTransaction(tx);
 
-    // Create response payload
     const payload = {
       transaction: transactionResponse.hash,
       message: "Thank you for your donation!",
