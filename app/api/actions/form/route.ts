@@ -1,140 +1,104 @@
-import { NextRequest } from 'next/server'
-import { ActionGetResponse, ActionPostRequest, ActionPostResponse, ActionError, ACTIONS_CORS_HEADERS, createPostResponse, MEMO_PROGRAM_ID } from "@solana/actions"
-import { Transaction, TransactionInstruction, PublicKey, ComputeBudgetProgram, Connection, clusterApiUrl, SystemProgram, LAMPORTS_PER_SOL, Keypair } from "@solana/web3.js"
-import { connectToDB } from '@/utils/database'
-import Player from '@/models/player'
-import axios from 'axios'
+import { NextRequest, NextResponse } from 'next/server';
+import { ethers } from 'ethers';
 
-const ACTION_URL = "https://52bd-122-172-83-213.ngrok-free.app/api/actions/form"
+const ACTION_URL = "https://37a3d4e1f4a8bb.lhr.life/api/actions/form";
 
-export const GET = async (req: Request) => {
+// Common CORS headers
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*", 
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+  "Access-Control-Allow-Credentials": "true",
+};
 
-  const payload: ActionGetResponse = {
-    icon: `https://blue-magnetic-wallaby-228.mypinata.cloud/ipfs/QmWqVwNn2REZ5rUV848LtcNiSFsLZq17fvbn7C9wd6hFga`,
-    label: "submit",
-    title: "Wanna play 1v1 chess on blinks using reclaim protocol?",
-    description: "\nenter your chess.com and x username and you will receive a game blink on your dm",
-    disabled: false,
-    links: {
-      actions: [
-        {
-          href: `${ACTION_URL}?x={x}&chess={chess}`,
-          label: "submit",
-          parameters: [
-            {
-              name: "chess",
-              label: "your chess.com username",
-              required: true
-            },
-            {
-              name: "x",
-              label: "your x username",
-              required: true
-            }
-          ]
-        }
-      ]
-    }
-  }
 
-  return Response.json(payload, {
-    headers: ACTIONS_CORS_HEADERS
-  })
-}
-
-export const OPTIONS = GET
-
-async function fetchChessRating(username: string) {
-  const chessApiUrl = `https://api.chess.com/pub/player/${username}/stats`
-
+export async function GET(req: NextRequest) {
   try {
-    const response = await axios.get(chessApiUrl)
-    const data = response.data
-    console.log(data)
-
-    if (data && data.chess_rapid && data.chess_rapid.last) {
-      return data.chess_rapid.last.rating
-    } else {
-      throw new Error('Invalid response from Chess.com')
-    }
-  } catch (error) {
-    console.error('Error fetching Chess.com stats:', error)
-    return 0
-  }
-}
-
-export const POST = async (req: NextRequest) => {
-  await connectToDB()
-
-  try {
-    const body: ActionPostRequest = await req.json()
-
-    let account: PublicKey
-
-    try { 
-      account = new PublicKey(body.account)
-    } catch (err) {
-      return new Response('Invalid account provided', {
-        status: 400,
-        headers: ACTIONS_CORS_HEADERS
-      })
-    }
-
-    console.log("Address:", account.toBase58())
-
-    const x_username = req.nextUrl.searchParams.get('x')
-    console.log("X Username:", x_username)
-    const chess_username = req.nextUrl.searchParams.get('chess')
-    console.log("Chess Username:", chess_username)
-
-    if (!x_username || !chess_username) {
-      return new Response('Missing required parameters', {
-        status: 400,
-        headers: ACTIONS_CORS_HEADERS
-      })
-    }
-
-    if (x_username !== "{x}" && chess_username !== "{chess}") {
-      const chess_rating = await fetchChessRating(chess_username)
-
-      const player = new Player({
-        address: account.toBase58(),
-        x_username,
-        chess_username,
-        chess_rating
-      })
-  
-      await player.save()
-    }
-
-    const connection = new Connection(clusterApiUrl("mainnet-beta"))
-    // const connection = new Connection(`https://solana-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`)
-    const transaction = new Transaction()
-
-    transaction.add(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: 1000
-      }),
-      new TransactionInstruction({
-        programId: new PublicKey(MEMO_PROGRAM_ID),
-        data: Buffer.from("reclaim on blinks", "utf-8"),
-        keys: []
-      })
-    )
-
-    transaction.feePayer = account
-    transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
-
-    const payload: ActionPostResponse = await createPostResponse({
-      fields: {
-        transaction,
-        message: `keep your dm's open, you'll receive a game blink soon`
+    const payload = {
+      icon: `https://example.com/donation-icon.png`,
+      label: "Donate",
+      title: "Support Alice's Research",
+      description: "Donate ETH to support Alice's cybersecurity research.",
+      disabled: false,
+      links: {
+        actions: [
+          {
+            href: `${ACTION_URL}?amount={amount}&note={note}`,
+            label: "Donate",
+            parameters: [
+              {
+                name: "amount",
+                label: "Enter the amount of ETH to donate",
+                required: true,
+              },
+              {
+                name: "note",
+                label: "Leave a thank you note (optional)",
+                required: false,
+              },
+            ],
+          },
+        ],
       },
-    })
+    };
 
-    return Response.json(payload, { headers: ACTIONS_CORS_HEADERS })
-  } catch (err) {
-    console.error(err)
-    return Response.json("An unknown error occured", { status: 500 })
+    return NextResponse.json(payload, { headers: CORS_HEADERS });
+  } catch (error) {
+    console.error("Error handling GET request:", error);
+    return NextResponse.json({ message: "An error occurred during GET request" }, { status: 500 });
+  }
+}
+
+
+export async function OPTIONS(req: NextRequest) {
+  console.log("Handling OPTIONS preflight request");
+  return NextResponse.json(null, { headers: CORS_HEADERS });
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const account = body.account;
+    const amount = req.nextUrl.searchParams.get('amount');
+    const note = req.nextUrl.searchParams.get('note') || '';
+
+    if (!ethers.utils.isAddress(account)) {
+      return new NextResponse('Invalid account provided', { status: 400, headers: CORS_HEADERS });
+    }
+
+    if (!amount) {
+      return new NextResponse('Amount is required', { status: 400, headers: CORS_HEADERS });
+    }
+
+    const PRIVATE_KEY = process.env.PRIVATE_KEY;
+    const RPC_URL = process.env.RPC_URL;
+
+    if (!PRIVATE_KEY || !RPC_URL) {
+      throw new Error('Private key or RPC URL is missing in the environment variables');
+    }
+
+    // Connect to Ethereum network
+    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    const signer = new ethers.Wallet(PRIVATE_KEY, provider);
+
+    // Create and send the transaction
+    const tx = {
+      to: account,
+      value: ethers.utils.parseEther(amount),
+      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(note)),  // Optional note added to the transaction
+    };
+
+    const transactionResponse = await signer.sendTransaction(tx);
+
+    // Create response payload
+    const payload = {
+      transaction: transactionResponse.hash,
+      message: "Thank you for your donation!",
+    };
+
+    return NextResponse.json(payload, { headers: CORS_HEADERS });
+  } catch (error) {
+    console.error("Error handling POST request:", error);
+    return NextResponse.json({ message: "An unknown error occurred" }, { status: 500, headers: CORS_HEADERS });
   }
 }

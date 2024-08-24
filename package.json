@@ -12,6 +12,8 @@
     "@solana/actions": "^1.6.1",
     "@solana/web3.js": "^1.95.2",
     "axios": "^1.7.4",
+    "dotenv": "^16.4.5",
+    "ethers": "^5.7.2",
     "mongoose": "^8.5.3",
     "next": "14.2.5",
     "react": "^18",
