@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 
-const ACTION_URL = "https:chess.spawnpoint.cloud/api/actions/form";
+const ACTION_URL = "https://chess.spawnpoint.cloud/api/actions/form";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
