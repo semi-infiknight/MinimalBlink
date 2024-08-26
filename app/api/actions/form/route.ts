@@ -3,14 +3,12 @@ import { ethers } from 'ethers';
 
 const ACTION_URL = "https://37a3d4e1f4a8bb.lhr.life/api/actions/form";
 
-
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*", 
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
   "Access-Control-Allow-Credentials": "true",
 };
-
 
 export async function GET(req: NextRequest) {
   try {
@@ -49,7 +47,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-
 export async function OPTIONS(req: NextRequest) {
   console.log("Handling OPTIONS preflight request");
   return NextResponse.json(null, { headers: CORS_HEADERS });
@@ -62,6 +59,25 @@ export async function POST(req: NextRequest) {
     const amount = req.nextUrl.searchParams.get('amount');
     const note = req.nextUrl.searchParams.get('note') || '';
 
+    // Check if window.ethereum is available
+    if (typeof window === "undefined" || !window.ethereum) {
+      return new NextResponse('Ethereum provider is not available', { status: 400, headers: CORS_HEADERS });
+    }
+
+    // Set provider with browser
+    console.log('setActiveProviderDetailWindowEthereum ', window.ethereum);
+
+    const providerDetail = {
+      info: {
+        uuid: '',
+        name: 'window.ethereum',
+        icon: '',
+      },
+      provider: window.ethereum,
+    };
+
+    const provider = providerDetail.provider;
+
     if (!ethers.utils.isAddress(account)) {
       return new NextResponse('Invalid account provided', { status: 400, headers: CORS_HEADERS });
     }
@@ -70,26 +86,21 @@ export async function POST(req: NextRequest) {
       return new NextResponse('Amount is required', { status: 400, headers: CORS_HEADERS });
     }
 
-    const PRIVATE_KEY = process.env.PRIVATE_KEY;
-    const RPC_URL = process.env.RPC_URL;
-
-    if (!PRIVATE_KEY || !RPC_URL) {
-      throw new Error('Private key or RPC URL is missing in the environment variables');
-    }
-
-    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-    const signer = new ethers.Wallet(PRIVATE_KEY, provider);
-
-    const tx = {
+    // Transaction parameters
+    const params = {
       to: account,
       value: ethers.utils.parseEther(amount),
-      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(note)), 
+      data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(note)),
     };
 
-    const transactionResponse = await signer.sendTransaction(tx);
+    // Send transaction using window.ethereum provider
+    const result = await provider.request({
+      method: 'eth_sendTransaction',
+      params: [params],
+    });
 
     const payload = {
-      transaction: transactionResponse.hash,
+      transaction: result,
       message: "Thank you for your donation!",
     };
 
